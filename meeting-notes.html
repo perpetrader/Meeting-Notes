@@ -255,12 +255,13 @@
   @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
   .fade-in { animation: fadeIn 0.2s ease; }
 
-  @media (max-width: 600px) {
+  @media (max-width: 700px) {
     .content { padding: 1rem; }
     .header { padding: 0 1rem; }
     .logo span { display: none; }
     .nav-btn { padding: 6px 10px; font-size: 12px; }
     .meeting-grid { grid-template-columns: 1fr; }
+    [id^="notes-grid-"] { grid-template-columns: 1fr !important; }
   }
 </style>
 </head>
@@ -674,13 +675,15 @@ async function handleFiles(files) {
         rawNotes: parsed.rawNotes || '',
         createdAt: new Date().toISOString()
       };
+      // Store image locally (too large for Sheets)
+      try { localStorage.setItem('fn_img_' + meeting.id, 'data:' + imgs[i].type + ';base64,' + base64); } catch(e) {}
       db.meetings.push(meeting);
 
       // Save to sheets
       await appendRow('Meetings', [
         meeting.id, meeting.title, meeting.date,
-        JSON.stringify(meeting.attendees), meeting.summary,
-        JSON.stringify(meeting.keyPoints), JSON.stringify(meeting.topics),
+        JSON.stringify(meeting.attendees), '',
+        '[]', JSON.stringify(meeting.topics),
         meeting.rawNotes, meeting.createdAt
       ]);
 
@@ -789,8 +792,25 @@ function openMeeting(id) {
         </div>
         <button class="btn btn-sm" onclick="addAttendee('${m.id}')" style="font-size:11px;padding:3px 8px">+ Add</button>
       </div>
-      <div class="section-label" style="margin-bottom:0.75rem">Notes</div>
-      <div class="notes-body">${escHTML(m.rawNotes||'')}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start" id="notes-grid-${m.id}">
+        <div>
+          <div class="section-label" style="margin-bottom:0.75rem">Original Photo</div>
+          ${localStorage.getItem('fn_img_' + m.id)
+            ? `<img src="${localStorage.getItem('fn_img_' + m.id)}" style="width:100%;border-radius:8px;border:0.5px solid var(--border)">`
+            : `<div style="background:var(--bg3);border-radius:8px;padding:2rem;text-align:center;font-size:12px;color:var(--text3)">Photo not available on this device</div>`}
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+            <div class="section-label" style="margin-bottom:0">Transcription</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-sm" id="edit-btn-${m.id}" onclick="toggleEditNotes('${m.id}')">Edit</button>
+              <button class="btn btn-sm btn-primary" id="save-btn-${m.id}" onclick="saveNotes('${m.id}')" style="display:none">Save</button>
+            </div>
+          </div>
+          <div class="notes-body" id="notes-view-${m.id}">${escHTML(m.rawNotes||'')}</div>
+          <textarea id="notes-edit-${m.id}" style="display:none;width:100%;min-height:300px;background:var(--bg3);color:var(--text);border:0.5px solid var(--accent);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:13px;line-height:1.7;resize:vertical">${escHTML(m.rawNotes||'')}</textarea>
+        </div>
+      </div>
     </div>
     <div class="card fade-in">
       <h3 style="font-family:'Playfair Display',serif;font-size:16px;font-weight:500;margin-bottom:1rem">Action Items</h3>
@@ -800,6 +820,46 @@ function openMeeting(id) {
       </div>
       <div class="action-list" id="detail-actions">${actionHTML}</div>
     </div>`;
+}
+
+function toggleEditNotes(meetingId) {
+  const view = document.getElementById('notes-view-' + meetingId);
+  const edit = document.getElementById('notes-edit-' + meetingId);
+  const editBtn = document.getElementById('edit-btn-' + meetingId);
+  const saveBtn = document.getElementById('save-btn-' + meetingId);
+  const isEditing = edit.style.display !== 'none';
+  if (isEditing) {
+    // cancel
+    const m = db.meetings.find(x => x.id === meetingId);
+    edit.value = m.rawNotes || '';
+    view.style.display = 'block';
+    edit.style.display = 'none';
+    editBtn.textContent = 'Edit';
+    saveBtn.style.display = 'none';
+  } else {
+    view.style.display = 'none';
+    edit.style.display = 'block';
+    edit.focus();
+    editBtn.textContent = 'Cancel';
+    saveBtn.style.display = 'inline-flex';
+  }
+}
+
+async function saveNotes(meetingId) {
+  const m = db.meetings.find(x => x.id === meetingId);
+  if (!m) return;
+  const edit = document.getElementById('notes-edit-' + meetingId);
+  const view = document.getElementById('notes-view-' + meetingId);
+  const editBtn = document.getElementById('edit-btn-' + meetingId);
+  const saveBtn = document.getElementById('save-btn-' + meetingId);
+  m.rawNotes = edit.value;
+  view.textContent = m.rawNotes;
+  view.style.display = 'block';
+  edit.style.display = 'none';
+  editBtn.textContent = 'Edit';
+  saveBtn.style.display = 'none';
+  await rewriteSheets();
+  showToast('Notes saved');
 }
 
 function editAttendee(meetingId, index) {
@@ -840,6 +900,7 @@ async function deleteMeeting(id) {
   if (!confirm('Delete this meeting and its action items?')) return;
   db.meetings = db.meetings.filter(m => m.id !== id);
   db.actionItems = db.actionItems.filter(a => a.meetingId !== id);
+  try { localStorage.removeItem('fn_img_' + id); } catch(e) {}
   closeMeeting();
   await rewriteSheets();
   showToast('Meeting deleted');
