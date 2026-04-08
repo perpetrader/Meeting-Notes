@@ -381,7 +381,7 @@ function handleAuth() {
   }
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
-    redirect_uri: window.location.origin,
+    redirect_uri: window.location.origin + window.location.pathname,
     response_type: 'token',
     scope: SCOPES,
     include_granted_scopes: 'true'
