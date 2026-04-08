@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Notes — Meeting Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --bg2: #ffffff;
+    --bg3: #f0ede6;
+    --text: #1a1916;
+    --text2: #5a5750;
+    --text3: #9a9590;
+    --border: rgba(26,25,22,0.12);
+    --border2: rgba(26,25,22,0.22);
+    --accent: #1a1916;
+    --teal-bg: #e1f5ee;
+    --teal-text: #085041;
+    --amber-bg: #faeeda;
+    --amber-text: #633806;
+    --blue-bg: #e6f1fb;
+    --blue-text: #0c447c;
+    --danger: #e24b4a;
+    --danger-bg: #fcebeb;
+    --success: #1d9e75;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: var(--bg2);
+    border-bottom: 0.5px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 1.5rem; }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .logo span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text3);
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.08em;
+  }
+  .nav { display: flex; gap: 2px; }
+  .nav-btn {
+    border: none; background: none;
+    padding: 6px 14px; font-size: 13px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 400; color: var(--text2);
+    cursor: pointer; border-radius: 6px;
+    transition: all 0.15s; letter-spacing: 0.01em;
+    position: relative;
+  }
+  .nav-btn:hover { background: var(--bg3); color: var(--text); }
+  .nav-btn.active { background: var(--bg3); color: var(--text); font-weight: 500; }
+  .nav-badge {
+    position: absolute; top: 2px; right: 4px;
+    background: var(--text); color: var(--bg2);
+    border-radius: 10px; padding: 1px 5px;
+    font-size: 9px; font-weight: 500;
+  }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .sync-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: var(--text3);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+  .sync-dot.ok { background: var(--success); }
+  .sync-dot.err { background: var(--danger); }
+
+  /* CONTENT */
+  .content { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border: 0.5px solid var(--border2);
+    border-radius: 8px; background: var(--bg2);
+    color: var(--text); font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.15s; text-decoration: none;
+  }
+  .btn:hover { background: var(--bg3); }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--text); color: var(--bg2); border-color: transparent; }
+  .btn-primary:hover { opacity: 0.85; background: var(--text); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-danger { color: var(--danger); border-color: rgba(226,75,74,0.3); }
+  .btn-danger:hover { background: var(--danger-bg); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* CARDS */
+  .card {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 1.5rem;
+  }
+
+  /* AUTH SCREEN */
+  .auth-screen {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 70vh; text-align: center; gap: 1rem;
+  }
+  .auth-screen h2 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 500; }
+  .auth-screen p { font-size: 14px; color: var(--text2); max-width: 380px; line-height: 1.6; }
+
+  /* UPLOAD */
+  .upload-zone {
+    border: 1.5px dashed var(--border2); border-radius: 12px;
+    padding: 3rem 2rem; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--bg2); margin-bottom: 1.5rem;
+  }
+  .upload-zone:hover, .upload-zone.dragging { border-color: var(--text2); background: var(--bg3); }
+  .upload-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+  .upload-zone h3 { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 500; margin-bottom: 6px; }
+  .upload-zone p { font-size: 13px; color: var(--text2); }
+
+  /* MEETING GRID */
+  .meeting-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .meeting-card {
+    background: var(--bg2); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.15s;
+  }
+  .meeting-card:hover { border-color: var(--border2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .card-date { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3); margin-bottom: 8px; letter-spacing: 0.05em; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; line-height: 1.3; }
+  .card-people { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+  .card-summary { font-size: 13px; color: var(--text2); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-topics { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+
+  /* BADGES */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.03em; }
+  .badge-teal { background: var(--teal-bg); color: var(--teal-text); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue-text); }
+
+  /* SECTION LABEL */
+  .section-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; margin-bottom: 8px; }
+
+  /* SEARCH */
+  .search-wrap { margin-bottom: 1.5rem; }
+  .search-input {
+    width: 100%; padding: 11px 16px;
+    border: 0.5px solid var(--border2); border-radius: 10px;
+    background: var(--bg2); color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 15px;
+  }
+  .search-input:focus { outline: none; border-color: var(--text3); }
+  .search-input::placeholder { color: var(--text3); }
+  .search-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3); margin-bottom: 1rem; }
+
+  /* MEETING DETAIL */
+  .detail-back { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .detail-title { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 500; line-height: 1.2; margin-bottom: 6px; }
+  .detail-meta { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text3); letter-spacing: 0.04em; }
+  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; }
+  .people-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
+  .person-chip { padding: 4px 10px; background: var(--bg3); border-radius: 20px; font-size: 12px; font-weight: 500; color: var(--text2); }
+  .notes-body { font-size: 14px; line-height: 1.8; color: var(--text2); white-space: pre-wrap; }
+  .key-points { list-style: none; }
+  .key-points li { font-size: 14px; color: var(--text2); line-height: 1.6; padding: 6px 0; border-bottom: 0.5px solid var(--border); display: flex; gap: 10px; }
+  .key-points li::before { content: '—'; color: var(--text3); flex-shrink: 0; }
+  .divider { height: 0.5px; background: var(--border); margin: 1.25rem 0; }
+
+  /* STRATEGY */
+  .strategy-item { display: flex; gap: 16px; padding: 1rem 0; border-bottom: 0.5px solid var(--border); align-items: flex-start; }
+  .strategy-item:last-child { border-bottom: none; }
+  .strategy-rank { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 400; color: var(--border2); min-width: 40px; line-height: 1; padding-top: 2px; }
+  .strategy-content h4 { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .strategy-content p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .strategy-source { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* ACTION ITEMS */
+  .action-list { display: flex; flex-direction: column; gap: 8px; }
+  .action-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 0.5px solid var(--border); border-radius: 8px; transition: opacity 0.2s; }
+  .action-item.done { opacity: 0.45; }
+  .action-item.done .action-text { text-decoration: line-through; }
+  .checkbox {
+    width: 18px; height: 18px; border: 1.5px solid var(--border2);
+    border-radius: 4px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px; transition: all 0.15s; background: var(--bg2);
+  }
+  .checkbox.checked { background: var(--text); border-color: var(--text); }
+  .checkbox.checked::after { content: ''; width: 10px; height: 6px; border-left: 2px solid var(--bg2); border-bottom: 2px solid var(--bg2); transform: rotate(-45deg) translateY(-1px); display: block; }
+  .action-text { font-size: 14px; color: var(--text); flex: 1; line-height: 1.4; }
+  .action-meeting { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+  .add-form { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+  .add-input {
+    flex: 1; padding: 9px 12px; border: 0.5px solid var(--border2);
+    border-radius: 8px; background: var(--bg2); color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+  }
+  .add-input:focus { outline: none; border-color: var(--text3); }
+  .add-input::placeholder { color: var(--text3); }
+  select.add-input { cursor: pointer; }
+
+  /* LOADER */
+  .loader { display: flex; flex-direction: column; align-items: center; padding: 5rem 2rem; gap: 16px; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); animation: pulse 1.2s ease-in-out infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }
+  .loader-text { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text3); }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 4rem 2rem; }
+  .empty h3 { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 400; color: var(--text2); margin-bottom: 8px; }
+  .empty p { font-size: 13px; color: var(--text3); }
+
+  /* HIGHLIGHT */
+  mark { background: var(--amber-bg); color: var(--amber-text); border-radius: 2px; padding: 0 2px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg2);
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; font-family: 'IBM Plex Sans', sans-serif;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  .fade-in { animation: fadeIn 0.2s ease; }
+
+  @media (max-width: 600px) {
+    .content { padding: 1rem; }
+    .header { padding: 0 1rem; }
+    .logo span { display: none; }
+    .nav-btn { padding: 6px 10px; font-size: 12px; }
+    .meeting-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">Field Notes <span>MEETING INTELLIGENCE</span></div>
+    <nav class="nav" id="nav">
+      <button class="nav-btn active" data-tab="meetings">Meetings</button>
+      <button class="nav-btn" data-tab="search">Search</button>
+      <button class="nav-btn" data-tab="strategy">Strategy Board</button>
+      <button class="nav-btn" data-tab="actions">Action Items <span class="nav-badge" id="action-badge" style="display:none"></span></button>
+    </nav>
+  </div>
+  <div class="header-right">
+    <div class="sync-status" id="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text">Not connected</span>
+    </div>
+    <button class="btn btn-sm" id="auth-btn" onclick="handleAuth()">Sign in with Google</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- MEETINGS TAB -->
+  <div class="page active" id="tab-meetings">
+    <div id="meeting-list-view">
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-icon">📷</div>
+        <h3>Upload handwritten notes</h3>
+        <p>Drop photos here or click to select — Claude will read and structure them</p>
+      </div>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
+      <div id="meetings-loader" style="display:none" class="loader">
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="loader-text" id="meetings-loader-text">Processing notes…</div>
+      </div>
+      <div class="meeting-grid" id="meeting-grid"></div>
+      <div class="empty" id="meetings-empty" style="display:none">
+        <h3>No meetings yet</h3>
+        <p>Upload a photo of handwritten notes to get started</p>
+      </div>
+    </div>
+    <div id="meeting-detail-view" style="display:none" class="fade-in"></div>
+  </div>
+
+  <!-- SEARCH TAB -->
+  <div class="page" id="tab-search">
+    <div class="search-wrap">
+      <input class="search-input" id="search-input" placeholder="Search by person, topic, or keyword…" oninput="doSearch()" autofocus>
+    </div>
+    <div class="search-meta" id="search-meta"></div>
+    <div class="meeting-grid" id="search-results"></div>
+    <div class="empty" id="search-empty" style="display:none">
+      <h3>No matches</h3><p>Try a different keyword or name</p>
+    </div>
+  </div>
+
+  <!-- STRATEGY TAB -->
+  <div class="page" id="tab-strategy">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;flex-wrap:wrap">
+        <div>
+          <h2 style="font-family:'Playfair Display',serif;font-size:22px;font-weight:500;margin-bottom:4px">Strategy Board</h2>
+          <p style="font-size:13px;color:var(--text2)" id="strategy-subtitle">Top 10 priorities synthesized from your meetings</p>
+        </div>
+        <button class="btn btn-primary" id="strategy-btn" onclick="generateStrategy()">Generate</button>
+      </div>
+      <div id="strategy-loader" style="display:none" class="loader">
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div class="loader-text">Synthesizing across all meetings…</div>
+      </div>
+      <div id="strategy-list"></div>
+      <div class="empty" id="strategy-empty">
+        <h3>Ready to analyze</h3><p>Add meetings first, then click Generate</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIONS TAB -->
+  <div class="page" id="tab-actions">
+    <h2 style="font-family:'Playfair Display',serif;font-size:22px;font-weight:500;margin-bottom:1.25rem">Action Items</h2>
+    <div class="add-form">
+      <input class="add-input" id="new-action-input" placeholder="Add a new action item…" onkeydown="if(event.key==='Enter')addGlobalAction()">
+      <select class="add-input" id="new-action-meeting" style="max-width:200px">
+        <option value="">No meeting</option>
+      </select>
+      <button class="btn btn-primary" onclick="addGlobalAction()">Add</button>
+    </div>
+    <div id="actions-open"></div>
+    <div id="actions-done-wrap" style="display:none">
+      <div class="divider"></div>
+      <div class="section-label" id="actions-done-label"></div>
+      <div id="actions-done" style="margin-top:0.75rem"></div>
+    </div>
+    <div class="empty" id="actions-empty" style="display:none">
+      <h3>No action items</h3><p>Add items above or from individual meeting pages</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const CLIENT_ID = '985248918381-q6uncps7rsgpsc4qhkb50jtqd5cgmou6.apps.googleusercontent.com';
+const SHEET_ID  = '1WRYzD2wTWRqYFXedHwKdr8gwDcbgPgh-UbN4lpZBz7Y';
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let accessToken = null;
+let db = { meetings: [], actionItems: [] };
+let currentTab = 'meetings';
+let strategy = [];
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+function handleAuth() {
+  if (accessToken) {
+    accessToken = null;
+    document.getElementById('auth-btn').textContent = 'Sign in with Google';
+    setSyncStatus(false, 'Not connected');
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: window.location.origin + window.location.pathname,
+    response_type: 'token',
+    scope: SCOPES,
+    include_granted_scopes: 'true'
+  });
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+}
+
+function checkAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash) return;
+  const params = new URLSearchParams(hash.slice(1));
+  const token = params.get('access_token');
+  if (token) {
+    accessToken = token;
+    window.history.replaceState({}, '', window.location.pathname);
+    document.getElementById('auth-btn').textContent = 'Sign out';
+    setSyncStatus(true, 'Connected');
+    loadFromSheets();
+  }
+}
+
+function setSyncStatus(ok, text) {
+  const dot = document.getElementById('sync-dot');
+  dot.className = 'sync-dot' + (ok ? ' ok' : ok === false ? ' err' : '');
+  document.getElementById('sync-text').textContent = text;
+}
+
+// ─── SHEETS API ───────────────────────────────────────────────────────────────
+async function sheetsRequest(method, range, body) {
+  if (!accessToken) return null;
+  const base = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
+  let url, opts;
+  if (method === 'GET') {
+    url = `${base}/values/${encodeURIComponent(range)}`;
+    opts = { headers: { Authorization: 'Bearer ' + accessToken } };
+  } else {
+    url = `${base}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+    opts = {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ range, majorDimension: 'ROWS', values: body })
+    };
+  }
+  const res = await fetch(url, opts);
+  if (!res.ok) { setSyncStatus(false, 'Sync error'); return null; }
+  return res.json();
+}
+
+async function appendRow(sheetName, values) {
+  if (!accessToken) return;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(sheetName + '!A1')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ range: sheetName + '!A1', majorDimension: 'ROWS', values: [values] })
+  });
+}
+
+async function updateRow(sheetName, rowNum, values) {
+  if (!accessToken) return;
+  const range = `${sheetName}!A${rowNum}`;
+  await sheetsRequest('PUT', range, [values]);
+}
+
+async function loadFromSheets() {
+  setSyncStatus(null, 'Loading…');
+  try {
+    // Ensure sheets exist
+    await ensureSheets();
+
+    const [mRes, aRes] = await Promise.all([
+      sheetsRequest('GET', 'Meetings!A2:Z'),
+      sheetsRequest('GET', 'Actions!A2:Z')
+    ]);
+
+    db.meetings = [];
+    if (mRes && mRes.values) {
+      db.meetings = mRes.values.map((row, i) => ({
+        rowNum: i + 2,
+        id: row[0], title: row[1], date: row[2],
+        attendees: safeJSON(row[3], []),
+        summary: row[4], keyPoints: safeJSON(row[5], []),
+        topics: safeJSON(row[6], []),
+        rawNotes: row[7], createdAt: row[8]
+      }));
+    }
+
+    db.actionItems = [];
+    if (aRes && aRes.values) {
+      db.actionItems = aRes.values.map((row, i) => ({
+        rowNum: i + 2,
+        id: row[0], text: row[1],
+        meetingId: row[2], done: row[3] === 'true',
+        createdAt: row[4]
+      }));
+    }
+
+    setSyncStatus(true, 'Synced');
+    renderAll();
+  } catch(e) {
+    setSyncStatus(false, 'Sync failed');
+    console.error(e);
+  }
+}
+
+async function ensureSheets() {
+  // Get spreadsheet metadata to check existing sheets
+  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`, {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+  const data = await res.json();
+  const existing = data.sheets.map(s => s.properties.title);
+
+  const needed = [];
+  if (!existing.includes('Meetings')) needed.push({ addSheet: { properties: { title: 'Meetings' } } });
+  if (!existing.includes('Actions')) needed.push({ addSheet: { properties: { title: 'Actions' } } });
+
+  if (needed.length > 0) {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests: needed })
+    });
+    // Add headers
+    if (!existing.includes('Meetings')) {
+      await sheetsRequest('PUT', 'Meetings!A1:I1', [['ID','Title','Date','Attendees','Summary','KeyPoints','Topics','RawNotes','CreatedAt']]);
+    }
+    if (!existing.includes('Actions')) {
+      await sheetsRequest('PUT', 'Actions!A1:E1', [['ID','Text','MeetingID','Done','CreatedAt']]);
+    }
+  }
+}
+
+function safeJSON(str, fallback) {
+  try { return str ? JSON.parse(str) : fallback; } catch { return fallback; }
+}
+
+// ─── ANTHROPIC API ────────────────────────────────────────────────────────────
+async function parseNotes(base64, mimeType) {
+  const prompt = `You are parsing handwritten meeting notes from an image. Extract and structure carefully, making your best effort to decipher unclear handwriting.
+
+Return ONLY a JSON object (no markdown, no backticks) with this exact structure:
+{"title":"Meeting title or topic","date":"Date if visible or null","attendees":["name1","name2"],"summary":"2-3 sentence summary","keyPoints":["point 1","point 2"],"topics":["topic1","topic2"],"actionItems":["action 1"],"rawNotes":"Full transcription preserving structure"}`;
+
+  const res = await fetch(ANTHROPIC_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    })
+  });
+  const data = await res.json();
+  const text = (data.content || []).map(b => b.text || '').join('');
+  return JSON.parse(text.replace(/```json|```/g, '').trim());
+}
+
+async function generateStrategy() {
+  if (db.meetings.length === 0) { showToast('Add meetings first'); return; }
+  document.getElementById('strategy-loader').style.display = 'flex';
+  document.getElementById('strategy-list').innerHTML = '';
+  document.getElementById('strategy-empty').style.display = 'none';
+  document.getElementById('strategy-btn').disabled = true;
+
+  const summaries = db.meetings.map((m, i) =>
+    `Meeting ${i+1}: "${m.title}" (${m.date || 'no date'})\nAttendees: ${(m.attendees||[]).join(', ')}\nKey points: ${(m.keyPoints||[]).join('; ') || m.summary}`
+  ).join('\n\n');
+
+  const prompt = `Based on these meeting notes, identify the top 10 most important strategic items, recurring themes, or things needing attention. Be specific and actionable.
+
+${summaries}
+
+Return ONLY a JSON array of exactly 10 objects (no markdown, no backticks):
+[{"title":"short title","insight":"1-2 sentence insight or action","source":"which meeting(s)"}]`;
+
+  try {
+    const res = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const text = (data.content || []).map(b => b.text || '').join('');
+    strategy = JSON.parse(text.replace(/```json|```/g, '').trim());
+    renderStrategy();
+  } catch(e) {
+    showToast('Strategy generation failed');
+    document.getElementById('strategy-empty').style.display = 'block';
+  }
+  document.getElementById('strategy-loader').style.display = 'none';
+  document.getElementById('strategy-btn').disabled = false;
+  document.getElementById('strategy-btn').textContent = 'Refresh';
+}
+
+// ─── FILE HANDLING ────────────────────────────────────────────────────────────
+async function handleFiles(files) {
+  const imgs = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!imgs.length) return;
+  document.getElementById('meetings-loader').style.display = 'flex';
+  document.getElementById('meeting-list-view').querySelector('.upload-zone').style.display = 'none';
+
+  for (let i = 0; i < imgs.length; i++) {
+    document.getElementById('meetings-loader-text').textContent = `Parsing notes ${i+1} of ${imgs.length}…`;
+    try {
+      const base64 = await toBase64(imgs[i]);
+      const parsed = await parseNotes(base64, imgs[i].type);
+      const meeting = {
+        id: 'm_' + Date.now() + '_' + i,
+        title: parsed.title || 'Untitled Meeting',
+        date: parsed.date || new Date().toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }),
+        attendees: parsed.attendees || [],
+        summary: parsed.summary || '',
+        keyPoints: parsed.keyPoints || [],
+        topics: parsed.topics || [],
+        rawNotes: parsed.rawNotes || '',
+        createdAt: new Date().toISOString()
+      };
+      db.meetings.push(meeting);
+
+      // Save to sheets
+      await appendRow('Meetings', [
+        meeting.id, meeting.title, meeting.date,
+        JSON.stringify(meeting.attendees), meeting.summary,
+        JSON.stringify(meeting.keyPoints), JSON.stringify(meeting.topics),
+        meeting.rawNotes, meeting.createdAt
+      ]);
+
+      // Add any extracted action items
+      for (const at of (parsed.actionItems || [])) {
+        const item = { id: 'a_' + Date.now(), text: at, meetingId: meeting.id, done: false, createdAt: new Date().toISOString() };
+        db.actionItems.push(item);
+        await appendRow('Actions', [item.id, item.text, item.meetingId, 'false', item.createdAt]);
+      }
+
+    } catch(e) { console.error('Parse error', e); showToast('Could not parse one image'); }
+  }
+
+  document.getElementById('meetings-loader').style.display = 'none';
+  document.getElementById('meeting-list-view').querySelector('.upload-zone').style.display = 'block';
+  document.getElementById('file-input').value = '';
+  renderAll();
+  showToast('Notes added successfully');
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+// ─── DRAG & DROP ──────────────────────────────────────────────────────────────
+const zone = document.getElementById('upload-zone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragging'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragging'); handleFiles(e.dataTransfer.files); });
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderMeetings();
+  renderActions();
+  updateActionBadge();
+  populateMeetingSelect();
+  if (currentTab === 'search') doSearch();
+}
+
+function renderMeetings() {
+  const grid = document.getElementById('meeting-grid');
+  const empty = document.getElementById('meetings-empty');
+  const sorted = [...db.meetings].reverse();
+  if (sorted.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  grid.innerHTML = sorted.map(m => meetingCardHTML(m)).join('');
+}
+
+function meetingCardHTML(m, query='') {
+  const topics = (m.topics||[]).slice(0,3).map(t => `<span class="badge badge-teal">${hl(t,query)}</span>`).join('');
+  return `<div class="meeting-card" onclick="openMeeting('${m.id}')">
+    <div class="card-date">${m.date || ''}</div>
+    <div class="card-title">${hl(m.title||'',query)}</div>
+    ${m.attendees?.length ? `<div class="card-people">with ${hl(m.attendees.join(', '),query)}</div>` : ''}
+    <div class="card-summary">${hl(m.summary||'',query)}</div>
+    ${topics ? `<div class="card-topics">${topics}</div>` : ''}
+  </div>`;
+}
+
+function hl(text, query) {
+  if (!query) return escHTML(text);
+  const safe = escHTML(text);
+  const safeQ = escHTML(query).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return safe.replace(new RegExp(`(${safeQ})`, 'gi'), '<mark>$1</mark>');
+}
+
+function escHTML(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openMeeting(id) {
+  const m = db.meetings.find(x => x.id === id);
+  if (!m) return;
+  const actions = db.actionItems.filter(a => a.meetingId === id);
+  const actionHTML = actions.length
+    ? actions.map(a => actionItemHTML(a, false)).join('')
+    : '<p style="font-size:13px;color:var(--text3)">No action items for this meeting yet</p>';
+
+  document.getElementById('meeting-list-view').style.display = 'none';
+  const dv = document.getElementById('meeting-detail-view');
+  dv.style.display = 'block';
+  dv.innerHTML = `
+    <div class="detail-back">
+      <button class="btn" onclick="closeMeeting()">← Back</button>
+      <button class="btn btn-danger" onclick="deleteMeeting('${m.id}')">Delete</button>
+    </div>
+    <div class="card fade-in" style="margin-bottom:1rem">
+      <div class="detail-header">
+        <div>
+          <div class="detail-title">${escHTML(m.title)}</div>
+          <div class="detail-meta">${m.date || ''}</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end">
+          ${(m.topics||[]).map(t=>`<span class="badge badge-teal">${escHTML(t)}</span>`).join('')}
+        </div>
+      </div>
+      ${m.attendees?.length ? `
+        <div class="section-label">Attendees</div>
+        <div class="people-chips" style="margin-bottom:1.25rem">
+          ${m.attendees.map(a=>`<span class="person-chip">${escHTML(a)}</span>`).join('')}
+        </div>` : ''}
+      <div class="section-label">Summary</div>
+      <p style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:1.25rem">${escHTML(m.summary)}</p>
+      ${m.keyPoints?.length ? `
+        <div class="section-label">Key Points</div>
+        <ul class="key-points" style="margin-bottom:1.25rem">
+          ${m.keyPoints.map(p=>`<li>${escHTML(p)}</li>`).join('')}
+        </ul>` : ''}
+      <div class="divider"></div>
+      <div class="section-label" style="margin-bottom:0.75rem">Full Notes</div>
+      <div class="notes-body">${escHTML(m.rawNotes||'')}</div>
+    </div>
+    <div class="card fade-in">
+      <h3 style="font-family:'Playfair Display',serif;font-size:16px;font-weight:500;margin-bottom:1rem">Action Items</h3>
+      <div class="add-form" style="margin-bottom:1rem">
+        <input class="add-input" id="detail-action-input" placeholder="Add action item…" onkeydown="if(event.key==='Enter')addDetailAction('${m.id}')">
+        <button class="btn btn-primary" onclick="addDetailAction('${m.id}')">Add</button>
+      </div>
+      <div class="action-list" id="detail-actions">${actionHTML}</div>
+    </div>`;
+}
+
+function closeMeeting() {
+  document.getElementById('meeting-list-view').style.display = 'block';
+  document.getElementById('meeting-detail-view').style.display = 'none';
+  renderMeetings();
+}
+
+async function deleteMeeting(id) {
+  if (!confirm('Delete this meeting and its action items?')) return;
+  db.meetings = db.meetings.filter(m => m.id !== id);
+  db.actionItems = db.actionItems.filter(a => a.meetingId !== id);
+  closeMeeting();
+  await rewriteSheets();
+  showToast('Meeting deleted');
+}
+
+function renderStrategy() {
+  const list = document.getElementById('strategy-list');
+  const empty = document.getElementById('strategy-empty');
+  if (!strategy.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = strategy.map((item,i) => `
+    <div class="strategy-item">
+      <div class="strategy-rank">${i+1}</div>
+      <div class="strategy-content">
+        <h4>${escHTML(item.title)}</h4>
+        <p>${escHTML(item.insight)}</p>
+        ${item.source ? `<div class="strategy-source">↳ ${escHTML(item.source)}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function renderActions() {
+  const open = db.actionItems.filter(a => !a.done);
+  const done = db.actionItems.filter(a => a.done);
+  const empty = document.getElementById('actions-empty');
+
+  if (db.actionItems.length === 0) { empty.style.display = 'block'; document.getElementById('actions-open').innerHTML = ''; return; }
+  empty.style.display = 'none';
+
+  document.getElementById('actions-open').innerHTML = open.length
+    ? `<div class="section-label" style="margin-bottom:0.75rem">Open — ${open.length}</div><div class="action-list">${open.map(a=>actionItemHTML(a,true)).join('')}</div>`
+    : '';
+
+  const doneWrap = document.getElementById('actions-done-wrap');
+  if (done.length) {
+    doneWrap.style.display = 'block';
+    document.getElementById('actions-done-label').textContent = `Completed — ${done.length}`;
+    document.getElementById('actions-done').innerHTML = `<div class="action-list">${done.map(a=>actionItemHTML(a,true)).join('')}</div>`;
+  } else { doneWrap.style.display = 'none'; }
+}
+
+function actionItemHTML(a, showDelete) {
+  const meeting = db.meetings.find(m => m.id === a.meetingId);
+  return `<div class="action-item ${a.done?'done':''}" id="action-${a.id}">
+    <div class="checkbox ${a.done?'checked':''}" onclick="toggleAction('${a.id}')"></div>
+    <div style="flex:1">
+      <div class="action-text">${escHTML(a.text)}</div>
+      ${meeting ? `<div class="action-meeting">↳ ${escHTML(meeting.title)}</div>` : ''}
+    </div>
+    ${showDelete ? `<button class="btn btn-sm btn-danger" onclick="deleteAction('${a.id}')">Remove</button>` : ''}
+  </div>`;
+}
+
+function updateActionBadge() {
+  const open = db.actionItems.filter(a => !a.done).length;
+  const badge = document.getElementById('action-badge');
+  badge.style.display = open > 0 ? 'inline' : 'none';
+  badge.textContent = open;
+}
+
+function populateMeetingSelect() {
+  const sel = document.getElementById('new-action-meeting');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">No meeting</option>' +
+    db.meetings.map(m => `<option value="${m.id}">${escHTML(m.title)}</option>`).join('');
+  sel.value = cur;
+}
+
+// ─── SEARCH ───────────────────────────────────────────────────────────────────
+function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  const results = document.getElementById('search-results');
+  const meta = document.getElementById('search-meta');
+  const empty = document.getElementById('search-empty');
+
+  if (!q) { results.innerHTML = ''; meta.textContent = ''; empty.style.display = 'none'; return; }
+
+  const matches = db.meetings.filter(m => {
+    const lq = q.toLowerCase();
+    return [m.title, m.summary, m.rawNotes, ...(m.topics||[]), ...(m.attendees||[]), ...(m.keyPoints||[])]
+      .some(s => (s||'').toLowerCase().includes(lq));
+  });
+
+  meta.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''}`;
+  empty.style.display = matches.length === 0 ? 'block' : 'none';
+  results.innerHTML = matches.reverse().map(m => meetingCardHTML(m, q)).join('');
+
+  // clicking from search goes to meeting detail
+  results.querySelectorAll('.meeting-card').forEach((card, i) => {
+    card.onclick = () => { switchTab('meetings'); openMeeting(matches[matches.length-1-i].id); };
+  });
+}
+
+// ─── ACTION ITEMS ─────────────────────────────────────────────────────────────
+async function addGlobalAction() {
+  const input = document.getElementById('new-action-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const meetingId = document.getElementById('new-action-meeting').value || null;
+  const item = { id: 'a_' + Date.now(), text, meetingId, done: false, createdAt: new Date().toISOString() };
+  db.actionItems.push(item);
+  input.value = '';
+  renderActions();
+  updateActionBadge();
+  await appendRow('Actions', [item.id, item.text, item.meetingId||'', 'false', item.createdAt]);
+}
+
+async function addDetailAction(meetingId) {
+  const input = document.getElementById('detail-action-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const item = { id: 'a_' + Date.now(), text, meetingId, done: false, createdAt: new Date().toISOString() };
+  db.actionItems.push(item);
+  input.value = '';
+  updateActionBadge();
+  // Re-render detail actions
+  const container = document.getElementById('detail-actions');
+  const actions = db.actionItems.filter(a => a.meetingId === meetingId);
+  container.innerHTML = actions.map(a => actionItemHTML(a, false)).join('');
+  await appendRow('Actions', [item.id, item.text, item.meetingId, 'false', item.createdAt]);
+}
+
+async function toggleAction(id) {
+  const item = db.actionItems.find(a => a.id === id);
+  if (!item) return;
+  item.done = !item.done;
+  renderActions();
+  updateActionBadge();
+  // Update detail view if open
+  const detailActions = document.getElementById('detail-actions');
+  if (detailActions) {
+    const actions = db.actionItems.filter(a => a.meetingId === item.meetingId);
+    detailActions.innerHTML = actions.map(a => actionItemHTML(a, false)).join('');
+  }
+  await rewriteSheets();
+}
+
+async function deleteAction(id) {
+  db.actionItems = db.actionItems.filter(a => a.id !== id);
+  renderActions();
+  updateActionBadge();
+  await rewriteSheets();
+}
+
+async function rewriteSheets() {
+  if (!accessToken) return;
+  // Rewrite meetings sheet
+  const mRows = db.meetings.map(m => [
+    m.id, m.title, m.date, JSON.stringify(m.attendees), m.summary,
+    JSON.stringify(m.keyPoints), JSON.stringify(m.topics), m.rawNotes, m.createdAt
+  ]);
+  // Clear and rewrite
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Meetings!A2:Z?valueInputOption=RAW`, {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ range: 'Meetings!A2:Z', majorDimension: 'ROWS', values: mRows.length ? mRows : [['']] })
+  });
+
+  const aRows = db.actionItems.map(a => [a.id, a.text, a.meetingId||'', String(a.done), a.createdAt]);
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Actions!A2:Z?valueInputOption=RAW`, {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ range: 'Actions!A2:Z', majorDimension: 'ROWS', values: aRows.length ? aRows : [['']] })
+  });
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'meetings') closeMeeting();
+}
+
+document.getElementById('nav').addEventListener('click', e => {
+  const btn = e.target.closest('.nav-btn');
+  if (btn && btn.dataset.tab) switchTab(btn.dataset.tab);
+});
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+checkAuthCallback();
+renderAll();
+</script>
+</body>
+</html>
