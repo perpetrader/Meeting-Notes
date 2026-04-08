@@ -381,11 +381,12 @@ function handleAuth() {
   }
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
-    redirect_uri: window.location.origin + window.location.pathname,
+    redirect_uri: window.location.origin,
     response_type: 'token',
     scope: SCOPES,
     include_granted_scopes: 'true'
   });
+
   window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
 }
 
