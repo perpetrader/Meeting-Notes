@@ -586,10 +586,14 @@ function safeJSON(str, fallback) {
 
 // ─── ANTHROPIC API ────────────────────────────────────────────────────────────
 async function parseNotes(base64, mimeType) {
-  const prompt = `You are parsing handwritten meeting notes from an image. Extract and structure carefully, making your best effort to decipher unclear handwriting.
+  const prompt = `You are transcribing handwritten meeting notes from an image. Your job is to produce a VERBATIM, word-for-word transcription — do NOT summarize, paraphrase, or infer meaning. Transcribe exactly what is written, preserving the original structure, bullet points, abbreviations, and formatting as closely as possible.
 
-Return ONLY a JSON object (no markdown, no backticks) with this exact structure:
-{"title":"Meeting title or topic","date":"Date if visible or null","attendees":["name1","name2"],"summary":"2-3 sentence summary","keyPoints":["point 1","point 2"],"topics":["topic1","topic2"],"actionItems":["action 1"],"rawNotes":"Full transcription preserving structure"}`;
+The notes will typically have the date and attendee names at the very top of the page. Parse those first.
+
+For action items: only extract items that are explicitly marked as action items or tasks in the notes (e.g. circled, starred, marked with "action:", "todo:", checkbox, arrow, etc). Do not infer action items.
+
+Return ONLY a JSON object (no markdown, no backticks):
+{"title":"Brief title derived from the date and subject if visible, otherwise the date","date":"Date from top of notes, exactly as written","attendees":["names exactly as written at top of page"],"topics":["1-3 main topics mentioned"],"actionItems":["only explicitly marked action items, verbatim"],"rawNotes":"COMPLETE verbatim word-for-word transcription of everything written on the page, preserving all structure, line breaks, bullets, abbreviations exactly as written"}`;
 
   const res = await fetch(ANTHROPIC_API, {
     method: 'POST',
@@ -619,8 +623,8 @@ async function generateStrategy() {
   document.getElementById('strategy-btn').disabled = true;
 
   const summaries = db.meetings.map((m, i) =>
-    `Meeting ${i+1}: "${m.title}" (${m.date || 'no date'})\nAttendees: ${(m.attendees||[]).join(', ')}\nKey points: ${(m.keyPoints||[]).join('; ') || m.summary}`
-  ).join('\n\n');
+    `Meeting ${i+1}: "${m.title}" (${m.date || 'no date'})\nAttendees: ${(m.attendees||[]).join(', ')}\nNotes:\n${m.rawNotes||''}`
+  ).join('\n\n---\n\n');
 
   const prompt = `Based on these meeting notes, identify the top 10 most important strategic items, recurring themes, or things needing attention. Be specific and actionable.
 
@@ -666,8 +670,6 @@ async function handleFiles(files) {
         title: parsed.title || 'Untitled Meeting',
         date: parsed.date || new Date().toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }),
         attendees: parsed.attendees || [],
-        summary: parsed.summary || '',
-        keyPoints: parsed.keyPoints || [],
         topics: parsed.topics || [],
         rawNotes: parsed.rawNotes || '',
         createdAt: new Date().toISOString()
@@ -738,7 +740,7 @@ function meetingCardHTML(m, query='') {
     <div class="card-date">${m.date || ''}</div>
     <div class="card-title">${hl(m.title||'',query)}</div>
     ${m.attendees?.length ? `<div class="card-people">with ${hl(m.attendees.join(', '),query)}</div>` : ''}
-    <div class="card-summary">${hl(m.summary||'',query)}</div>
+    <div class="card-summary">${hl((m.rawNotes||'').slice(0,180),query)}</div>
     ${topics ? `<div class="card-topics">${topics}</div>` : ''}
   </div>`;
 }
@@ -780,20 +782,14 @@ function openMeeting(id) {
           ${(m.topics||[]).map(t=>`<span class="badge badge-teal">${escHTML(t)}</span>`).join('')}
         </div>
       </div>
-      ${m.attendees?.length ? `
-        <div class="section-label">Attendees</div>
-        <div class="people-chips" style="margin-bottom:1.25rem">
-          ${m.attendees.map(a=>`<span class="person-chip">${escHTML(a)}</span>`).join('')}
-        </div>` : ''}
-      <div class="section-label">Summary</div>
-      <p style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:1.25rem">${escHTML(m.summary)}</p>
-      ${m.keyPoints?.length ? `
-        <div class="section-label">Key Points</div>
-        <ul class="key-points" style="margin-bottom:1.25rem">
-          ${m.keyPoints.map(p=>`<li>${escHTML(p)}</li>`).join('')}
-        </ul>` : ''}
-      <div class="divider"></div>
-      <div class="section-label" style="margin-bottom:0.75rem">Full Notes</div>
+      <div class="section-label">Attendees</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap">
+        <div class="people-chips" id="attendee-chips-${m.id}">
+          ${(m.attendees||[]).map((a,i)=>`<span class="person-chip" style="cursor:pointer" onclick="editAttendee('${m.id}',${i})" title="Click to edit">${escHTML(a)}</span>`).join('')}
+        </div>
+        <button class="btn btn-sm" onclick="addAttendee('${m.id}')" style="font-size:11px;padding:3px 8px">+ Add</button>
+      </div>
+      <div class="section-label" style="margin-bottom:0.75rem">Notes</div>
       <div class="notes-body">${escHTML(m.rawNotes||'')}</div>
     </div>
     <div class="card fade-in">
@@ -804,6 +800,34 @@ function openMeeting(id) {
       </div>
       <div class="action-list" id="detail-actions">${actionHTML}</div>
     </div>`;
+}
+
+function editAttendee(meetingId, index) {
+  const m = db.meetings.find(x => x.id === meetingId);
+  if (!m) return;
+  const current = m.attendees[index];
+  const updated = prompt('Edit attendee name:', current);
+  if (updated === null) return;
+  if (updated.trim() === '') {
+    m.attendees.splice(index, 1);
+  } else {
+    m.attendees[index] = updated.trim();
+  }
+  rewriteSheets();
+  // Re-render chips
+  const chips = document.getElementById('attendee-chips-' + meetingId);
+  if (chips) chips.innerHTML = m.attendees.map((a,i)=>`<span class="person-chip" style="cursor:pointer" onclick="editAttendee('${meetingId}',${i})" title="Click to edit">${escHTML(a)}</span>`).join('');
+}
+
+function addAttendee(meetingId) {
+  const m = db.meetings.find(x => x.id === meetingId);
+  if (!m) return;
+  const name = prompt('Add attendee name:');
+  if (!name || !name.trim()) return;
+  m.attendees.push(name.trim());
+  rewriteSheets();
+  const chips = document.getElementById('attendee-chips-' + meetingId);
+  if (chips) chips.innerHTML = m.attendees.map((a,i)=>`<span class="person-chip" style="cursor:pointer" onclick="editAttendee('${meetingId}',${i})" title="Click to edit">${escHTML(a)}</span>`).join('');
 }
 
 function closeMeeting() {
@@ -895,7 +919,7 @@ function doSearch() {
 
   const matches = db.meetings.filter(m => {
     const lq = q.toLowerCase();
-    return [m.title, m.summary, m.rawNotes, ...(m.topics||[]), ...(m.attendees||[]), ...(m.keyPoints||[])]
+    return [m.title, m.rawNotes, ...(m.topics||[]), ...(m.attendees||[])]
       .some(s => (s||'').toLowerCase().includes(lq));
   });
 
