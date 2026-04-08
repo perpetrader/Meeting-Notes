@@ -274,6 +274,7 @@
       <button class="nav-btn" data-tab="search">Search</button>
       <button class="nav-btn" data-tab="strategy">Strategy Board</button>
       <button class="nav-btn" data-tab="actions">Action Items <span class="nav-badge" id="action-badge" style="display:none"></span></button>
+      <button class="nav-btn" data-tab="settings">⚙ Settings</button>
     </nav>
   </div>
   <div class="header-right">
@@ -363,12 +364,60 @@
     </div>
   </div>
 
+  <!-- SETTINGS TAB -->
+  <div class="page" id="tab-settings">
+    <div class="card" style="max-width:560px">
+      <h2 style="font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;margin-bottom:6px">Settings</h2>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1.5rem">Configure your API key and connection. Each user needs their own Anthropic API key.</p>
+
+      <div class="section-label">Anthropic API Key</div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px">Used to parse handwritten notes and generate strategy. Get yours at <a href="https://console.anthropic.com" style="color:var(--accent2)">console.anthropic.com</a></p>
+      <div style="display:flex;gap:8px;margin-bottom:1.5rem">
+        <input class="add-input" type="password" id="api-key-input" placeholder="sk-ant-api03-…" style="flex:1;font-family:'DM Mono',monospace;font-size:12px">
+        <button class="btn btn-primary" onclick="saveApiKey()">Save</button>
+      </div>
+      <div id="api-key-status" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:1.5rem"></div>
+
+      <div class="divider"></div>
+      <div class="section-label" style="margin-top:1.25rem">Google Account</div>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px">Sign in to sync your meetings across devices via Google Sheets.</p>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="sync-status">
+          <div class="sync-dot" id="settings-sync-dot"></div>
+          <span id="settings-sync-text">Not connected</span>
+        </div>
+        <button class="btn btn-sm" onclick="handleAuth()" id="settings-auth-btn">Sign in with Google</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
+function getApiKey() { return localStorage.getItem('fn_anthropic_key') || ''; }
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val.startsWith('sk-ant-')) { showToast('Invalid API key format'); return; }
+  localStorage.setItem('fn_anthropic_key', val);
+  updateApiKeyStatus();
+  showToast('API key saved');
+}
+function updateApiKeyStatus() {
+  const key = getApiKey();
+  const el = document.getElementById('api-key-status');
+  const input = document.getElementById('api-key-input');
+  if (key) {
+    el.textContent = '✓ Key saved: ' + key.slice(0,12) + '…';
+    el.style.color = 'var(--success)';
+    input.placeholder = key.slice(0,12) + '…';
+  } else {
+    el.textContent = 'No key saved yet';
+    el.style.color = 'var(--text3)';
+  }
+}
 const CLIENT_ID = '985248918381-q6uncps7rsgpsc4qhkb50jtqd5cgmou6.apps.googleusercontent.com';
 const SHEET_ID  = '1WRYzD2wTWRqYFXedHwKdr8gwDcbgPgh-UbN4lpZBz7Y';
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
@@ -414,9 +463,15 @@ function checkAuthCallback() {
 }
 
 function setSyncStatus(ok, text) {
-  const dot = document.getElementById('sync-dot');
-  dot.className = 'sync-dot' + (ok ? ' ok' : ok === false ? ' err' : '');
+  const cls = 'sync-dot' + (ok ? ' ok' : ok === false ? ' err' : '');
+  document.getElementById('sync-dot').className = cls;
   document.getElementById('sync-text').textContent = text;
+  const sd = document.getElementById('settings-sync-dot');
+  const st = document.getElementById('settings-sync-text');
+  const sb = document.getElementById('settings-auth-btn');
+  if (sd) sd.className = cls;
+  if (st) st.textContent = text;
+  if (sb) sb.textContent = ok ? 'Sign out' : 'Sign in with Google';
 }
 
 // ─── SHEETS API ───────────────────────────────────────────────────────────────
@@ -538,7 +593,7 @@ Return ONLY a JSON object (no markdown, no backticks) with this exact structure:
 
   const res = await fetch(ANTHROPIC_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
@@ -577,7 +632,7 @@ Return ONLY a JSON array of exactly 10 objects (no markdown, no backticks):
   try {
     const res = await fetch(ANTHROPIC_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await res.json();
@@ -597,6 +652,7 @@ Return ONLY a JSON array of exactly 10 objects (no markdown, no backticks):
 async function handleFiles(files) {
   const imgs = Array.from(files).filter(f => f.type.startsWith('image/'));
   if (!imgs.length) return;
+  if (!getApiKey()) { showToast('Add your Anthropic API key in Settings first'); switchTab('settings'); return; }
   document.getElementById('meetings-loader').style.display = 'flex';
   document.getElementById('meeting-list-view').querySelector('.upload-zone').style.display = 'none';
 
@@ -953,6 +1009,7 @@ function showToast(msg) {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 checkAuthCallback();
 renderAll();
+updateApiKeyStatus();
 </script>
 </body>
 </html>
